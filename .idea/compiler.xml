@@ -12,9 +12,10 @@
         <module name="review-service" />
         <module name="api-gateway" />
         <module name="product-service" />
-        <module name="user-service" />
         <module name="order-service" />
+        <module name="user-service" />
         <module name="service-registry" />
+        <module name="notification-service" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>

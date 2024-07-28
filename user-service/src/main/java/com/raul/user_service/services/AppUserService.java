@@ -1,7 +1,9 @@
 package com.raul.user_service.services;
 
+import com.raul.user_service.client.NotificationClient;
 import com.raul.user_service.dto.AppUserRequestDto;
 import com.raul.user_service.dto.AppUserResponseDto;
+import com.raul.user_service.dto.emailDto.EmailDto;
 import com.raul.user_service.models.AppUser;
 import com.raul.user_service.repositories.AppUserRepository;
 import com.raul.user_service.util.exception.AppUserNotFoundException;
@@ -19,11 +21,20 @@ import java.util.stream.Collectors;
 public class AppUserService {
 
     private final AppUserRepository repository;
-
     private final AppUserConverter converter;
+    private final NotificationClient notificationClient;
+
     public ResponseEntity<AppUserResponseDto> createAppUser(AppUserRequestDto request) {
         var appUser = repository.save(converter.convertToAppUser(request));
+
+        String subject = "User Creation";
+        String body = "Hello " + appUser.getFirstName() + " " + appUser.getLastName();
+        var email = createEmail(appUser, subject, body);
+
+        notificationClient.send(email);
+
         return new ResponseEntity<>(converter.convertToAppUserResponse(appUser), HttpStatus.OK);
+
     }
 
     public ResponseEntity<Void> updateAppUser(AppUserRequestDto request) {
@@ -32,6 +43,12 @@ public class AppUserService {
                                                                 "User with ID: " + request.id() + " not found"));
         updateAppUserFromRequest(appUser,request);
         repository.save(appUser);
+
+        String subject = "User info update";
+        String body = "Account information updated " + appUser.getFirstName() + " " + appUser.getLastName();
+        var email = createEmail(appUser, subject, body);
+
+        notificationClient.send(email);
 
         return ResponseEntity.accepted().build();
     }
@@ -69,5 +86,13 @@ public class AppUserService {
         repository.deleteById(appUserId);
 
         return ResponseEntity.accepted().build();
+    }
+
+    private EmailDto createEmail(AppUser appUser, String subject, String body) {
+        return EmailDto.builder()
+                .to(appUser.getEmail())
+                .subject(subject)
+                .body(body)
+                .build();
     }
 }

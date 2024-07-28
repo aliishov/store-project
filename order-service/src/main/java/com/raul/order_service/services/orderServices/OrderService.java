@@ -1,8 +1,10 @@
 package com.raul.order_service.services.orderServices;
 
 import com.raul.order_service.clients.AppUserClient;
+import com.raul.order_service.clients.NotificationClient;
 import com.raul.order_service.clients.PaymentClient;
 import com.raul.order_service.clients.ProductClient;
+import com.raul.order_service.dto.notificationDto.EmailDto;
 import com.raul.order_service.dto.orderDto.OrderRequestDto;
 import com.raul.order_service.dto.orderDto.OrderResponseDto;
 import com.raul.order_service.dto.paymentDto.PaymentRequestDto;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,6 +34,7 @@ public class OrderService {
     private final OrderRepository repository;
     private final OrderConverter converter;
     private final PaymentClient paymentClient;
+    private final NotificationClient notificationClient;
 
     @Transactional
     public ResponseEntity<OrderResponseDto> createOrder(OrderRequestDto request){
@@ -83,6 +87,14 @@ public class OrderService {
         if (payment.getStatusCode() == HttpStatus.OK) {
             order.setStatus("PAYED");
             repository.save(order);
+
+            var email = EmailDto.builder()
+                    .to(Objects.requireNonNull(appUserClient.getAppUserById(order.getAppUserId()).getBody()).email())
+                    .subject("Order Verification")
+                    .body("Order successfully payed. Status: " + order.getStatus())
+                    .build();
+
+            notificationClient.send(email);
 
         } else {
             return new ResponseEntity<>(converter.convertToOrderResponse(order), HttpStatus.BAD_REQUEST);
